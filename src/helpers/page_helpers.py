@@ -60,3 +60,22 @@ def update_extracted_page_details(postgres_connector: PostgresConnector, url: st
             result.in_stock,
         ),
     )
+
+
+def touch_page(postgres_connector: PostgresConnector, url: str) -> None:
+    upsert_inferred_timestamps(postgres_connector, url)
+
+
+def upsert_inferred_timestamps(postgres_connector: PostgresConnector, url: str) -> None:
+    query = """
+            INSERT INTO page_inferred_labels (url,
+                                              last_inferred_at,
+                                              created_at,
+                                              updated_at)
+            VALUES (%s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            ON CONFLICT (url) DO UPDATE
+            SET last_inferred_at = EXCLUDED.last_inferred_at,
+                updated_at = CURRENT_TIMESTAMP
+            """
+
+    postgres_connector.execute(query, (url,))

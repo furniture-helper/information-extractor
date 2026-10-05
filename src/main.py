@@ -1,7 +1,7 @@
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # from services.InformationExtractionModel import ie_model
-from helpers.page_helpers import get_unextracted_pages, update_extracted_page_details
+from helpers.page_helpers import get_unextracted_pages, update_extracted_page_details, touch_page
 from models.Page import Page
 from services.HtmlCleanerService import cleaner
 from services.InformationExtractionModel import ie_model
@@ -63,9 +63,12 @@ def process_page(page: Page):
         kafka_service.send_message(extraction_event.to_dict())
 
 
-    except Exception:
+    except Exception as e:
+        if isinstance(e, ValueError):
+            logger.debug(f"Failed to process page: {page.url}, error: {e}")
+            return
         logger.exception("Failed to process page: %s", page.url)
-        
+        touch_page(postgres_connector, page.url)
 
 
 if __name__ == "__main__":
