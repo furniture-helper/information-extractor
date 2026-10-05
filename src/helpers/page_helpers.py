@@ -17,7 +17,7 @@ def get_unextracted_pages(postgres: PostgresConnector) -> list[Page]:
                  pil.last_inferred_at < p.last_crawled_at - INTERVAL '5 minutes') OR
                 pil.last_inferred_at IS NULL
                 )
-            ORDER BY RANDOM()
+            ORDER BY pil.last_inferred_at ASC
                 LIMIT %s \
             """
 
@@ -32,25 +32,23 @@ def get_unextracted_pages(postgres: PostgresConnector) -> list[Page]:
 
 def update_extracted_page_details(postgres_connector: PostgresConnector, url: str, result: FilteredResult) -> None:
     query = """
-        INSERT INTO page_inferred_labels (
-            url,
-            product_title,
-            product_price,
-            product_image_url,
-            in_stock,
-            last_inferred_at,
-            created_at,
-            updated_at
-        )
-        VALUES (%s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-        ON CONFLICT (url) DO UPDATE SET
-            product_title = EXCLUDED.product_title,
-            product_price = EXCLUDED.product_price,
-            product_image_url = EXCLUDED.product_image_url,
-            in_stock = EXCLUDED.in_stock,
-            last_inferred_at = EXCLUDED.last_inferred_at,
-            updated_at = CURRENT_TIMESTAMP
-    """
+            INSERT INTO page_inferred_labels (url,
+                                              product_title,
+                                              product_price,
+                                              product_image_url,
+                                              in_stock,
+                                              last_inferred_at,
+                                              created_at,
+                                              updated_at)
+            VALUES (%s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) ON CONFLICT (url) DO
+            UPDATE SET
+                product_title = EXCLUDED.product_title,
+                product_price = EXCLUDED.product_price,
+                product_image_url = EXCLUDED.product_image_url,
+                in_stock = EXCLUDED.in_stock,
+                last_inferred_at = EXCLUDED.last_inferred_at,
+                updated_at = CURRENT_TIMESTAMP \
+            """
 
     postgres_connector.execute(
         query,
@@ -62,4 +60,3 @@ def update_extracted_page_details(postgres_connector: PostgresConnector, url: st
             result.in_stock,
         ),
     )
-
