@@ -4,12 +4,11 @@ from threading import Lock
 from lxml import html as lxml_html
 from transformers import MarkupLMProcessor
 
-from src import config
+import config
 from services.Logging import LoggingService
 
 
 class Processor:
-
     logger = LoggingService.get_logger("Processor")
 
     def __init__(self, model_id: str):
@@ -69,5 +68,6 @@ class Processor:
                 return_tensors="pt",
             )
         return encoding
+
 
 processor = Processor(config.get_processor_model_id())
