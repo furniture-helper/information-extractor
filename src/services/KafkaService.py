@@ -6,6 +6,7 @@ from dataclasses import dataclass, asdict
 from kafka import KafkaProducer as KafkaProducerClient
 
 from helpers.ecs_helpers import get_host, get_region
+from helpers.url_helpers import get_domain_from_url
 from services.InformationExtractionModel import ExtractionResult
 from services.PredictionFilter import FilteredResult
 
@@ -44,6 +45,7 @@ class ExtractionEvent:
     def to_dict(self):
         return {
             "url": self.url,
+            "domain": get_domain_from_url(self.url),
             "prediction": asdict(self.prediction),
             **asdict(self.filtered),
             "source": "ecs_extractor"
