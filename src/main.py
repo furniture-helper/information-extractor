@@ -5,7 +5,7 @@ from helpers.page_helpers import get_unextracted_pages, update_extracted_page_de
 from models.Page import Page
 from services.HtmlCleanerService import cleaner
 from services.InformationExtractionModel import ie_model
-from services.KafkaService import ExtractionEvent, kafka_service
+from services.KafkaService import ExtractionEvent, kafka_service, FailedExtractionEvent
 from services.Logging import LoggingService
 from services.PostgresConnector import postgres_connector
 from services.PredictionFilter import PredictionFilter
@@ -40,6 +40,8 @@ def main():
 
 def process_page(page: Page):
     logger.info("Processing page: %s", page.url)
+    result = None
+    filtered_result = None
 
     try:
         content = minimized_pages_bucket.download(page.s3_key)
@@ -60,15 +62,24 @@ def process_page(page: Page):
             filtered=filtered_result
         )
 
-        kafka_service.send_message(extraction_event.to_dict())
+        kafka_service.send_success_message(extraction_event.to_dict())
 
 
     except Exception as e:
         if isinstance(e, ValueError):
             logger.debug(f"Failed to process page: {page.url}, error: {e}")
-            return
-        logger.exception("Failed to process page: %s", page.url)
+        else:
+            logger.exception("Failed to process page: %s", page.url)
+
         touch_page(postgres_connector, page.url)
+
+        failed_extraction_event = FailedExtractionEvent(
+            url=page.url,
+            prediction=result if result else None,
+            filtered=filtered_result if filtered_result else None,
+            error=e.__str__()
+        )
+        kafka_service.send_failed_message(failed_extraction_event.to_dict())
 
 
 if __name__ == "__main__":
